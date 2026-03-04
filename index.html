@@ -43,8 +43,15 @@ MONITORING PEMASUKAN DOKUMEN PERUSAHAAN PETERNAKAN
 
 <!-- ================= TAB MENU ================= -->
 <ul class="nav nav-tabs mb-3">
+
 <li class="nav-item">
-<button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabData">
+<button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabRekap">
+Rekap
+</button>
+</li>
+
+<li class="nav-item">
+<button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabData">
 Data Monitoring
 </button>
 </li>
@@ -60,11 +67,19 @@ Grafik
 Anomali Data
 </button>
 </li>
+
 </ul>
 
 
 <div class="tab-content">
+<!-- ================= TAB REKAP ================= -->
+<div class="tab-pane fade show active" id="tabRekap">
 
+<h5 class="mb-3">Rekap Target dan Realisasi per Kabupaten/Kota</h5>
+
+<div id="rekapContainer"></div>
+
+</div>
 <!-- ================= TAB DATA ================= -->
 <div class="tab-pane fade show active" id="tabData">
 
@@ -371,6 +386,96 @@ year: "numeric"
 });
 }
 
+async function loadRekap(){
+
+const kategoriList = ["LTS","LTT","LTU"];
+const rekapContainer = document.getElementById("rekapContainer");
+rekapContainer.innerHTML = "";
+
+for(const sheet of kategoriList){
+
+try{
+
+const response = await fetch(`${BASE_URL}?action=data&sheet=${sheet}`);
+const data = await response.json();
+
+const kabData = {};
+
+data.forEach(row => {
+
+const kab = row["Nama Kab/Kota"];
+if(!kab) return;
+
+if(!kabData[kab]){
+kabData[kab] = {
+target: 0,
+realisasi: 0
+};
+}
+
+kabData[kab].target++;
+
+if(row["Tgl Submit Dokumen"]){
+kabData[kab].realisasi++;
+}
+
+});
+
+let tableHTML = `
+<div class="card mb-4 shadow-sm">
+<div class="card-header bg-primary text-white">
+Rekap ${sheet}
+</div>
+<div class="card-body">
+<div class="table-responsive">
+<table class="table table-bordered">
+<thead class="table-light">
+<tr>
+<th>Nama Kab/Kota</th>
+<th>Target</th>
+<th>Realisasi</th>
+<th>%</th>
+</tr>
+</thead>
+<tbody>
+`;
+
+for(const kab in kabData){
+
+const target = kabData[kab].target;
+const realisasi = kabData[kab].realisasi;
+const persen = target > 0 ? ((realisasi/target)*100).toFixed(1) : 0;
+
+tableHTML += `
+<tr>
+<td>${kab}</td>
+<td>${target}</td>
+<td>${realisasi}</td>
+<td>${persen}%</td>
+</tr>
+`;
+
+}
+
+tableHTML += `
+</tbody>
+</table>
+</div>
+</div>
+</div>
+`;
+
+rekapContainer.innerHTML += tableHTML;
+
+}catch(error){
+console.error("Gagal load rekap:", error);
+}
+
+}
+
+}
+
+loadRekap();
 loadData();
 
 </script>
