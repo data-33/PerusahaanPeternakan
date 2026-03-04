@@ -17,6 +17,11 @@ body{
 }
 .table th{
     font-size:14px;
+    cursor: pointer; /* Menandakan kolom bisa di-sort */
+    user-select: none;
+}
+.table th:hover{
+    background-color: #e2e6ea;
 }
 .table td{
     font-size:13px;
@@ -167,10 +172,11 @@ Silakan pilih kategori dan klik tampilkan data
 <table class="table table-bordered">
 <thead class="table-success">
 <tr>
-<th>Kabupaten/Kota</th>
-<th>Target</th>
-<th>Realisasi</th>
-<th>Persentase</th>
+<th onclick="sortRekap('LTS', 'kode', this)">Kode Kab/Kota</th>
+<th onclick="sortRekap('LTS', 'nama', this)">Kabupaten/Kota</th>
+<th onclick="sortRekap('LTS', 'target', this)">Target</th>
+<th onclick="sortRekap('LTS', 'realisasi', this)">Realisasi</th>
+<th onclick="sortRekap('LTS', 'persen', this)">Persentase</th>
 </tr>
 </thead>
 <tbody id="rekapLTS"></tbody>
@@ -184,10 +190,11 @@ Silakan pilih kategori dan klik tampilkan data
 <table class="table table-bordered">
 <thead class="table-primary">
 <tr>
-<th>Kabupaten/Kota</th>
-<th>Target</th>
-<th>Realisasi</th>
-<th>Persentase</th>
+<th onclick="sortRekap('LTT', 'kode', this)">Kode Kab/Kota</th>
+<th onclick="sortRekap('LTT', 'nama', this)">Kabupaten/Kota</th>
+<th onclick="sortRekap('LTT', 'target', this)">Target</th>
+<th onclick="sortRekap('LTT', 'realisasi', this)">Realisasi</th>
+<th onclick="sortRekap('LTT', 'persen', this)">Persentase</th>
 </tr>
 </thead>
 <tbody id="rekapLTT"></tbody>
@@ -201,10 +208,11 @@ Silakan pilih kategori dan klik tampilkan data
 <table class="table table-bordered">
 <thead class="table-warning">
 <tr>
-<th>Kabupaten/Kota</th>
-<th>Target</th>
-<th>Realisasi</th>
-<th>Persentase</th>
+<th onclick="sortRekap('LTU', 'kode', this)">Kode Kab/Kota</th>
+<th onclick="sortRekap('LTU', 'nama', this)">Kabupaten/Kota</th>
+<th onclick="sortRekap('LTU', 'target', this)">Target</th>
+<th onclick="sortRekap('LTU', 'realisasi', this)">Realisasi</th>
+<th onclick="sortRekap('LTU', 'persen', this)">Persentase</th>
 </tr>
 </thead>
 <tbody id="rekapLTU"></tbody>
@@ -223,6 +231,20 @@ let chartPieInstance = null;
 const BASE_URL = "https://script.google.com/macros/s/AKfycbxpFf7FeULKVl2bmoDCaqOWb5aZJ5lBrZ-MvXspDUJk2XLuqOiI4UVNx6uCRUw6u6LbqQ/exec";
 
 let allData = [];
+
+// Variabel untuk menyimpan data rekap agar bisa di-sort
+let rekapData = {
+    LTS: [],
+    LTT: [],
+    LTU: []
+};
+
+// Variabel untuk menyimpan status sorting
+let sortConfig = {
+    LTS: { col: 'nama', asc: true },
+    LTT: { col: 'nama', asc: true },
+    LTU: { col: 'nama', asc: true }
+};
 
 async function loadData(){
 
@@ -435,9 +457,14 @@ year: "numeric"
 });
 }
 
+// ================= FUNGSI REKAP BARU DENGAN SORTING =================
+
 async function loadRekap(){
 
 const kategoriList = ["LTS","LTT","LTU"];
+
+// Reset data rekap
+rekapData = { LTS: [], LTT: [], LTU: [] };
 
 for (let kategori of kategoriList){
 
@@ -449,10 +476,16 @@ for (let kategori of kategoriList){
     data.forEach(row => {
 
         const kab = row["Nama Kab/Kota"];
+        const kodeKab = row["Kode Kabupaten/Kota"];
+        
         if(!kab) return;
 
         if(!kabData[kab]){
-            kabData[kab] = { target: 0, realisasi: 0 };
+            kabData[kab] = { 
+                target: 0, 
+                realisasi: 0,
+                kode: kodeKab || "-"
+            };
         }
 
         kabData[kab].target++;
@@ -463,27 +496,85 @@ for (let kategori of kategoriList){
 
     });
 
-    const tbody = document.getElementById("rekap"+kategori);
-    tbody.innerHTML = "";
-
-    Object.keys(kabData).sort().forEach(kab => {
-
+    // Simpan data ke variabel global untuk sorting
+    rekapData[kategori] = Object.keys(kabData).map(kab => {
         const target = kabData[kab].target;
         const realisasi = kabData[kab].realisasi;
+        const kode = kabData[kab].kode;
         const persen = target > 0 ? ((realisasi/target)*100).toFixed(1) : 0;
 
-        const isFull = realisasi === target && target > 0;
-
-tbody.innerHTML += `
-<tr class="${isFull ? 'rekap-full' : ''}">
-<td>${kab}</td>
-<td>${target}</td>
-<td>${realisasi}</td>
-<td>${persen}%</td>
-</tr>`;
+        return {
+            kode: kode,
+            nama: kab,
+            target: target,
+            realisasi: realisasi,
+            persen: parseFloat(persen)
+        };
     });
 
 }
+
+// Render semua tabel rekap setelah data selesai dimuat
+renderAllRekap();
+}
+
+function renderAllRekap(){
+    renderRekapTable('LTS');
+    renderRekapTable('LTT');
+    renderRekapTable('LTU');
+}
+
+function renderRekapTable(sheet){
+    const tbody = document.getElementById("rekap"+sheet);
+    tbody.innerHTML = "";
+
+    // Ambil data dan konfigurasi sort untuk sheet ini
+    let data = rekapData[sheet];
+    let config = sortConfig[sheet];
+
+    // Sortir data
+    data.sort((a, b) => {
+        let valA = a[config.col];
+        let valB = b[config.col];
+
+        // Handle string vs number
+        if (typeof valA === 'string') {
+            valA = valA.toLowerCase();
+            valB = valB.toLowerCase();
+        }
+
+        if (valA < valB) return config.asc ? -1 : 1;
+        if (valA > valB) return config.asc ? 1 : -1;
+        return 0;
+    });
+
+    // Generate HTML
+    data.forEach(row => {
+        const isFull = row.realisasi === row.target && row.target > 0;
+        tbody.innerHTML += `
+<tr class="${isFull ? 'rekap-full' : ''}">
+<td>${row.kode}</td>
+<td>${row.nama}</td>
+<td>${row.target}</td>
+<td>${row.realisasi}</td>
+<td>${row.persen}%</td>
+</tr>`;
+    });
+}
+
+function sortRekap(sheet, col, thElement){
+    // Update konfigurasi sort
+    if (sortConfig[sheet].col === col) {
+        // Toggle arah jika kolom sama
+        sortConfig[sheet].asc = !sortConfig[sheet].asc;
+    } else {
+        // Set kolom baru, default ascending
+        sortConfig[sheet].col = col;
+        sortConfig[sheet].asc = true;
+    }
+
+    // Render ulang tabel
+    renderRekapTable(sheet);
 }
 
 loadRekap();
