@@ -28,6 +28,10 @@ body{
 .row-submit td {
     background-color: #c8e6c9 !important; /* hijau lembut */
 }
+.rekap-full td {
+    background-color: #c8e6c9 !important; /* hijau lembut */
+    font-weight: 600;
+}
 </style>
 </head>
 <body>
@@ -43,15 +47,8 @@ MONITORING PEMASUKAN DOKUMEN PERUSAHAAN PETERNAKAN
 
 <!-- ================= TAB MENU ================= -->
 <ul class="nav nav-tabs mb-3">
-
 <li class="nav-item">
-<button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabRekap">
-Rekap
-</button>
-</li>
-
-<li class="nav-item">
-<button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabData">
+<button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabData">
 Data Monitoring
 </button>
 </li>
@@ -63,23 +60,21 @@ Grafik
 </li>
 
 <li class="nav-item">
+<button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabRekap">
+Rekap
+</button>
+</li>
+
+<li class="nav-item">
 <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabAnomali">
 Anomali Data
 </button>
 </li>
-
 </ul>
 
 
 <div class="tab-content">
-<!-- ================= TAB REKAP ================= -->
-<div class="tab-pane fade show active" id="tabRekap">
 
-<h5 class="mb-3">Rekap Target dan Realisasi per Kabupaten/Kota</h5>
-
-<div id="rekapContainer"></div>
-
-</div>
 <!-- ================= TAB DATA ================= -->
 <div class="tab-pane fade show active" id="tabData">
 
@@ -163,7 +158,61 @@ Silakan pilih kategori dan klik tampilkan data
 </div>
 
 </div>
+<!-- ================= TAB REKAP ================= -->
+<div class="tab-pane fade" id="tabRekap">
 
+<div class="mb-4">
+<h5 class="text-success">Rekap LTS</h5>
+<div class="table-responsive">
+<table class="table table-bordered">
+<thead class="table-success">
+<tr>
+<th>Kabupaten/Kota</th>
+<th>Target</th>
+<th>Realisasi</th>
+<th>Persentase</th>
+</tr>
+</thead>
+<tbody id="rekapLTS"></tbody>
+</table>
+</div>
+</div>
+
+<div class="mb-4">
+<h5 class="text-primary">Rekap LTT</h5>
+<div class="table-responsive">
+<table class="table table-bordered">
+<thead class="table-primary">
+<tr>
+<th>Kabupaten/Kota</th>
+<th>Target</th>
+<th>Realisasi</th>
+<th>Persentase</th>
+</tr>
+</thead>
+<tbody id="rekapLTT"></tbody>
+</table>
+</div>
+</div>
+
+<div>
+<h5 class="text-warning">Rekap LTU</h5>
+<div class="table-responsive">
+<table class="table table-bordered">
+<thead class="table-warning">
+<tr>
+<th>Kabupaten/Kota</th>
+<th>Target</th>
+<th>Realisasi</th>
+<th>Persentase</th>
+</tr>
+</thead>
+<tbody id="rekapLTU"></tbody>
+</table>
+</div>
+</div>
+
+</div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
@@ -389,90 +438,52 @@ year: "numeric"
 async function loadRekap(){
 
 const kategoriList = ["LTS","LTT","LTU"];
-const rekapContainer = document.getElementById("rekapContainer");
-rekapContainer.innerHTML = "";
 
-for(const sheet of kategoriList){
+for (let kategori of kategoriList){
 
-try{
+    const response = await fetch(`${BASE_URL}?action=data&sheet=${kategori}`);
+    const data = await response.json();
 
-const response = await fetch(`${BASE_URL}?action=data&sheet=${sheet}`);
-const data = await response.json();
+    const kabData = {};
 
-const kabData = {};
+    data.forEach(row => {
 
-data.forEach(row => {
+        const kab = row["Nama Kab/Kota"];
+        if(!kab) return;
 
-const kab = row["Nama Kab/Kota"];
-if(!kab) return;
+        if(!kabData[kab]){
+            kabData[kab] = { target: 0, realisasi: 0 };
+        }
 
-if(!kabData[kab]){
-kabData[kab] = {
-target: 0,
-realisasi: 0
-};
-}
+        kabData[kab].target++;
 
-kabData[kab].target++;
+        if(row["Tgl Submit Dokumen"]){
+            kabData[kab].realisasi++;
+        }
 
-if(row["Tgl Submit Dokumen"]){
-kabData[kab].realisasi++;
-}
+    });
 
-});
+    const tbody = document.getElementById("rekap"+kategori);
+    tbody.innerHTML = "";
 
-let tableHTML = `
-<div class="card mb-4 shadow-sm">
-<div class="card-header bg-primary text-white">
-Rekap ${sheet}
-</div>
-<div class="card-body">
-<div class="table-responsive">
-<table class="table table-bordered">
-<thead class="table-light">
-<tr>
-<th>Nama Kab/Kota</th>
-<th>Target</th>
-<th>Realisasi</th>
-<th>%</th>
-</tr>
-</thead>
-<tbody>
-`;
+    Object.keys(kabData).sort().forEach(kab => {
 
-for(const kab in kabData){
+        const target = kabData[kab].target;
+        const realisasi = kabData[kab].realisasi;
+        const persen = target > 0 ? ((realisasi/target)*100).toFixed(1) : 0;
 
-const target = kabData[kab].target;
-const realisasi = kabData[kab].realisasi;
-const persen = target > 0 ? ((realisasi/target)*100).toFixed(1) : 0;
+        const isFull = realisasi === target && target > 0;
 
-tableHTML += `
-<tr>
+tbody.innerHTML += `
+<tr class="${isFull ? 'rekap-full' : ''}">
 <td>${kab}</td>
 <td>${target}</td>
 <td>${realisasi}</td>
 <td>${persen}%</td>
-</tr>
-`;
+</tr>`;
+    });
 
 }
-
-tableHTML += `
-</tbody>
-</table>
-</div>
-</div>
-</div>
-`;
-
-rekapContainer.innerHTML += tableHTML;
-
-}catch(error){
-console.error("Gagal load rekap:", error);
-}
-
-}
-
 }
 
 loadRekap();
