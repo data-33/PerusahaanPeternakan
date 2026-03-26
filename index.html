@@ -40,6 +40,17 @@ body{
 canvas {
     max-height: 300px;
 }
+.blink-text {
+    font-weight: bold;
+    color: #d32f2f;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%   { opacity: 1; }
+    50%  { opacity: 0; }
+    100% { opacity: 1; }
+}
 </style>
 </head>
 <body>
@@ -94,17 +105,28 @@ Anomali Data
 
 <!-- PIE CHART -->
 <div class="row mb-4">
-  <div class="col-md-4">
-    <h6 class="text-center">LTS</h6>
+  <div class="col-md-4 text-center">
+    <h6>LTS</h6>
     <canvas id="pieLTS"></canvas>
+    <div class="blink-text mt-2">
+      Batas Pendataan LTS : 5 April 2026
+    </div>
   </div>
-  <div class="col-md-4">
-    <h6 class="text-center">LTT</h6>
+
+  <div class="col-md-4 text-center">
+    <h6>LTT</h6>
     <canvas id="pieLTT"></canvas>
+    <div class="blink-text mt-2">
+      Batas Pendataan LTT : 30 April 2026
+    </div>
   </div>
-  <div class="col-md-4">
-    <h6 class="text-center">LTU</h6>
+
+  <div class="col-md-4 text-center">
+    <h6>LTU</h6>
     <canvas id="pieLTU"></canvas>
+    <div class="blink-text mt-2">
+      Batas Pendataan LTU : 30 Mei 2026
+    </div>
   </div>
 </div>
 
