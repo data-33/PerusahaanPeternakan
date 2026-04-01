@@ -367,13 +367,23 @@ console.error(error);
 function populateFilter(data){
 
 const filterKab = document.getElementById("filterKab");
-const kabList = [...new Set(data.map(row => row["Nama Kab/Kota"]).filter(Boolean))];
+
+// simpan pilihan sebelumnya
+const selectedValue = filterKab.value;
+
+const kabList = [...new Set(
+    data.map(row => row["Nama Kab/Kota"]?.toString().trim())
+    .filter(Boolean)
+)];
 
 filterKab.innerHTML = `<option value="">Semua Kabupaten/Kota</option>`;
 
 kabList.sort().forEach(kab => {
-filterKab.innerHTML += `<option value="${kab}">${kab}</option>`;
+    filterKab.innerHTML += `<option value="${kab}">${kab}</option>`;
 });
+
+// kembalikan pilihan jika masih ada
+filterKab.value = selectedValue;
 }
 
 function renderTable(data){
@@ -506,17 +516,21 @@ chartPieInstance = new Chart(ctxPie, {
 
 document.getElementById("filterKab").addEventListener("change", function(){
 
-const selectedKab = this.value;
+const selectedKab = this.value.toString().trim().toLowerCase();
 
 if(selectedKab === ""){
-renderTable(allData);
-renderTargetSubmitChart(allData);
+    renderTable(allData);
+    renderTargetSubmitChart(allData);
 }else{
-const filtered = allData.filter(row => 
-row["Nama Kab/Kota"] === selectedKab
-);
-renderTable(filtered);
-renderTargetSubmitChart(filtered);
+    const filtered = allData.filter(row => 
+        (row["Nama Kab/Kota"] || "")
+        .toString()
+        .trim()
+        .toLowerCase() === selectedKab
+    );
+
+    renderTable(filtered);
+    renderTargetSubmitChart(filtered);
 }
 });
 
