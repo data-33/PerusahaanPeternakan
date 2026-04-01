@@ -8,6 +8,9 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <style>
 body{
     background:#f4f6f9;
@@ -76,6 +79,12 @@ Dashboard
 <li class="nav-item">
 <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabData">
 Data Monitoring
+</button>
+</li>
+
+<li class="nav-item">
+<button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabPeta">
+Peta
 </button>
 </li>
 
@@ -209,6 +218,18 @@ Silakan pilih kategori dan klik tampilkan data
 </tbody>
 </table>
 </div>
+
+</div>
+
+<div class="tab-pane fade" id="tabPeta">
+
+<div class="mb-3">
+<button class="btn btn-success" onclick="loadPeta()">
+Tampilkan Peta
+</button>
+</div>
+
+<div id="map" style="height:500px;"></div>
 
 </div>
 
@@ -753,6 +774,141 @@ for(let kategori of kategoriList){
 loadRekap();
 loadData();
 loadDashboard();
+
+const BASE_URL_PETA = "https://script.google.com/macros/s/AKfycbwj8ifDsckah8TARikoWmCarXmUOdNyjYEaCiA2EEOUmgZ83N4bo8HboIP5JVVBznGq/exec"; // untuk peta
+let map;
+let markers = [];
+
+async function loadPeta(){
+
+// Ambil data dari spreadsheet BARU (ganti URL!)
+const url = "ISI_URL_SPREADSHEET_BARU_KAMU";
+
+const kategoriList = ["LTS","LTT","LTU"];
+
+let semuaData = [];
+
+// ambil semua kategori
+for(let kategori of kategoriList){
+
+    const res = await fetch(`${BASE_URL_PETA}?sheet=${kategori}`);
+    const data = await res.json();
+
+    // tambahkan info kategori
+    data.forEach(d => d.kategori = kategori);
+
+    semuaData = semuaData.concat(data);
+}
+
+// ================= INIT MAP =================
+if(!map){
+    map = L.map('map').setView([-7.2, 110.0], 8); // Jawa Tengah
+
+    L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenTopoMap'
+}).addTo(map);
+}
+
+// hapus marker lama
+markers.forEach(m => map.removeLayer(m));
+markers = [];
+
+// ================= TAMBAH MARKER =================
+semuaData.forEach(row => {
+
+    const koordinat = row["Koordinat"];
+    if(!koordinat) return;
+
+    const split = koordinat.split(",");
+    if(split.length !== 2) return;
+
+    const lat = parseFloat(split[0]);
+    const lng = parseFloat(split[1]);
+
+    if(isNaN(lat) || isNaN(lng)) return;
+
+    // warna beda tiap kategori
+    let color = "blue";
+    if(row.kategori === "LTS") color = "green";
+    if(row.kategori === "LTT") color = "orange";
+    if(row.kategori === "LTU") color = "red";
+
+    const marker = L.circleMarker([lat, lng], {
+        radius: 6,
+        color: color,
+        fillOpacity: 0.8
+    }).addTo(map);
+
+    marker.bindPopup(`
+        <b>${row["Nama Perusahaan/Farm"] || "-"}</b><br>
+        Kab: ${row["Nama Kab/Kota"]}<br>
+        Kategori: ${row.kategori}<br>
+        Alamat: ${row["Alamat"] || "-"}
+    `);
+
+    markers.push(marker);
+});
+
+}
+async function loadPeta(){
+
+const kategoriList = ["LTS","LTT","LTU"];
+let semuaData = [];
+
+for(let kategori of kategoriList){
+
+    const res = await fetch(`${BASE_URL_PETA}?sheet=${kategori}`);
+    const data = await res.json();
+
+    data.forEach(d => d.kategori = kategori);
+
+    semuaData = semuaData.concat(data);
+}
+
+// INIT MAP
+if(!map){
+    map = L.map('map').setView([-7.2, 110.0], 8);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+}
+
+// hapus marker lama
+markers.forEach(m => map.removeLayer(m));
+markers = [];
+
+// render marker
+semuaData.forEach(row => {
+
+    const koordinat = row["Koordinat"];
+    if(!koordinat) return;
+
+    const [lat, lng] = koordinat.split(",").map(x => parseFloat(x));
+
+    if(isNaN(lat) || isNaN(lng)) return;
+
+    let color = {
+        LTS: "green",
+        LTT: "orange",
+        LTU: "red"
+    }[row.kategori];
+
+    const marker = L.circleMarker([lat, lng], {
+        radius: 6,
+        color: color,
+        fillOpacity: 0.8
+    }).addTo(map);
+
+    marker.bindPopup(`
+        <b>${row["Nama Perusahaan/Farm"] || "-"}</b><br>
+        ${row["Nama Kab/Kota"]}<br>
+        ${row.kategori}
+    `);
+
+    markers.push(marker);
+});
+}
 
 </script>
 
